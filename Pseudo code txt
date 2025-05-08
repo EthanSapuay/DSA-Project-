@@ -1,0 +1,176 @@
+FUNCTION displayMenu():
+    DISPLAY "Welcome to LaundroTrack - Display Menu"
+    SET choice TO 0
+
+    WHILE choice != 4:
+        DISPLAY "Please select an option:"
+        DISPLAY "1. Add Order"
+        DISPLAY "2. View Queue"
+        DISPLAY "3. Create Report"
+        DISPLAY "4. Return to Main Menu"
+
+        PROMPT "Enter your choice (1-4): "
+        READ choice
+
+        IF choice == 1 THEN
+            DISPLAY "--- Add New Order ---"
+            PROMPT "Enter Customer Name:"
+            INPUT customer name
+
+            IF customer name EXISTS IN customer name THEN
+                DISPLAY "Customer Found"
+                DISPLAY customer data AND history
+            ELSE
+                DISPLAY "No Record Found. Create a New Profile."
+                PROMPT "Enter Full Name:"
+                INPUT customer’s name
+                PROMPT "Enter Phone Number:"
+                INPUT phone number
+                CREATE new profile with customer’s name and phone number
+                ADD profile to customer’s data
+                SET customer’s name = new customer data
+            END IF
+
+            GENERATE order
+            DISPLAY "Assigned Tag: " + order
+
+            PROMPT "Enter Date In (YYYY-MM-DD):"
+            INPUT date in
+            PROMPT "Enter Date Out (YYYY-MM-DD):"
+            INPUT date out
+            PROMPT "Enter number of items:"
+            INPUT item count
+
+            DISPLAY "Select Service Type:"
+            DISPLAY "1. Wash Only"
+            DISPLAY "2. Wash and Dry"
+            DISPLAY "3. Full Service"
+            INPUT choice of service type
+
+            IF choice of service type == 1 THEN
+                SET service type = "Wash Only"
+            ELSE IF choice of service type == 2 THEN
+                SET service type = "Wash and Dry"
+            ELSE IF choice of service type == 3 THEN
+               
+SET service type = "Full Service"
+            ELSE
+                DISPLAY "Invalid service selection."
+                RETURN TO menu
+            END IF
+
+            GET price based on service type
+            CALCULATE total price = item count * price
+            DISPLAY "Total Price: P" + total price
+
+            PROMPT "Do you want to save this order? (yes/no):"
+            INPUT confirm
+
+            IF confirm == "yes" THEN
+                SAVE order to queue List
+                DISPLAY "Order saved successfully."
+            ELSE
+                DISPLAY "Order not saved."
+            END IF
+
+        ELSE IF choice == 2 THEN
+            DISPLAY "--- View Queue ---"
+            DISPLAY "1. Pending Orders"
+            DISPLAY "2. Completed Orders"
+            DISPLAY "3. Exit"
+
+            INPUT choice
+
+            IF vchoice == 1 THEN
+                DISPLAY "Pending Orders:"
+                DISPLAY queueList
+            ELSE IF choice == 2 THEN
+                DISPLAY "Completed Orders:"
+                DISPLAY completed Orders List
+            ELSE IF choice == 3 THEN
+                CONTINUE TO menu
+            ELSE
+                DISPLAY "Invalid choice."
+            END IF
+
+            PROMPT "Would you like to return to the menu? (yes/no):"
+            INPUT return
+            IF return != "yes" THEN
+                EXIT
+            END IF
+
+        ELSE IF choice == 3 THEN
+            CALL create Report Menu
+
+        ELSE IF choice == 4 THEN
+            DISPLAY "Returning to Main Menu..."
+            BREAK
+        ELSE
+            DISPLAY "Invalid input. Please enter a number between 1 and 4."
+        END IF
+
+    END WHILE
+END FUNCTION
+
+
+
+
+
+
+FUNCTION create Report Menu(completed_orders):
+    SET choice TO 0
+
+    WHILE choice != 3:
+        DISPLAY "--- LaundroTrack Report Menu ---"
+        DISPLAY "1. Generate Service Report"
+        DISPLAY "2. Sort Completed Orders (FIFO)"
+        DISPLAY "3. Return to Main Menu"
+
+        PROMPT "Enter your choice (1–3): "
+        INPUT choice
+
+        IF choice == 1 THEN
+            PROMPT "Enter Order ID to Generate Report: "
+            INPUT search order id
+            SET found order TO NULL
+
+            FOR EACH order IN completed orders:
+                IF order.id == search order id THEN
+                    SET found order TO order
+                    BREAK
+                END IF
+            END FOR
+
+            IF found order IS NULL THEN
+                DISPLAY "Error: Order ID not found."
+            ELSE
+                DISPLAY order report with:
+                    - Customer Name
+                    - Service Type
+                    - Date In / Out
+                    - Items
+                    - Total Price
+            END IF
+
+        ELSE IF choice == 2 THEN
+            DISPLAY "--- Sorting Orders (FIFO by Date In) ---"
+            SORT completed orders BY date in ASCENDING
+
+            FOR EACH order IN completed orders:
+                DISPLAY "Order ID: " + order.id + 
+                        ", Name: " + order customer name + 
+                        ", Date: " + order date in + 
+                        ", Service: " + order service type
+            END FOR
+
+        ELSE IF choice == 3 THEN
+            DISPLAY "Returning to Main Menu..."
+            BREAK
+        ELSE
+            DISPLAY "Invalid input. Please select 1–3."
+        END IF
+
+        DISPLAY "Press any key to return to the Report Menu..."
+        WAIT FOR USER INPUT
+    END WHILE
+END FUNCTION
