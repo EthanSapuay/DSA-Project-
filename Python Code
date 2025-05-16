@@ -1,1 +1,407 @@
+import datetime
+import sys
 
+# sq stand for sorted queue
+# qc stand for queue choice
+# so stand for selected order
+# tp stand for total price
+# ql stand for queue list
+# col stands for completed order list
+# cd stand for customer profiles
+
+class Order:
+    def __init__(self, id, customer_name, phone_number, date_in, date_out, 
+                 item_count, service_type, price, total_price, status="Pending"):
+        self.id = id
+        self.customer_name = customer_name
+        self.phone_number = phone_number
+        self.date_in = date_in
+        self.date_out = date_out
+        self.item_count = item_count
+        self.service_type = service_type
+        self.price = price
+        self.total_price = total_price
+        self.status = status
+
+
+ql = []           
+col = []           
+cd = {}             
+
+def vd(date):
+    """Validate date in YYYY-MM-DD format"""
+    try:
+        datetime.datetime.strptime(date, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+def vdi(prompt):
+    """Get a valid date input from user"""
+    while True:
+        date = input(prompt)
+        if vd(date):
+            return date
+        print("Invalid date format. Please use YYYY-MM-DD.")
+
+def addo():
+    """Add a new order"""
+    print("--- Add New Order ---")
+    
+    name = input("Enter Customer Name: ")
+    if not name:
+        print("Order cancelled.")
+        return
+    
+    profile = None
+
+    if name in cd:
+        print("Customer Found")
+        profile = cd[name]
+        print(f"Name: {profile['name']}")
+        print(f"Phone: {profile['phone']}")
+        print(f"Previous Orders: {len(profile['order_history'])}")
+    else:
+        found = False
+        for key in cd:
+            if key.lower() == name.lower():
+                print("Customer Found")
+                profile = cd[key]
+                name = key  
+                print(f"Name: {profile['name']}")
+                print(f"Phone: {profile['phone']}")
+                print(f"Previous Orders: {len(profile['order_history'])}")
+                found = True
+                break
+        
+        if not found:
+            print("No Record Found. Create a New Profile.")
+            full_name = name
+            phone_number = input("Enter Phone Number: ")
+            
+            profile = {
+                "name": full_name,
+                "phone": phone_number,
+                "order_history": []
+            }
+            cd[full_name] = profile
+    
+
+    order_id = name
+    print(f"Assigned Tag: {order_id}")
+
+    date_in = vdi("Enter Date In (YYYY-MM-DD): ")
+    
+    date_out = vdi("Enter Date Out (YYYY-MM-DD): ")
+    
+    while True:
+        try:
+            item_count = int(input("Enter number of items: "))
+            if item_count >= 1:
+                break
+            print("Value must be at least 1.")
+        except ValueError:
+            print("Please enter a valid number.")
+    
+
+    print("Select Service Type:")
+    print("1. Wash Only (20 php per item)")
+    print("2. Wash and Dry (35 php per item)")
+    print("3. Full Service (50 php per item)")
+    
+    while True:
+        try:
+            service_choice = int(input("Enter choice (1-3): "))
+            if 1 <= service_choice <= 3:
+                break
+            print("Please enter a number between 1 and 3.")
+        except ValueError:
+            print("Please enter a valid number.")
+    
+    service_type = ""
+    price = 0.0
+    
+    if service_choice == 1:
+        service_type = "Wash Only"
+        price = 20.0
+    elif service_choice == 2:
+        service_type = "Wash and Dry"
+        price = 35.0
+    elif service_choice == 3:
+        service_type = "Full Service"
+        price = 50.0
+    
+    tp = item_count * price
+    print(f"Total Price: P{tp:.2f}")
+    
+    confirm = input("Do you want to save this order? (yes/no): ").lower()
+    
+    if confirm == "yes":
+        new_order = Order(
+            id=order_id,
+            customer_name=name,
+            phone_number=profile["phone"],  
+            date_in=date_in,
+            date_out=date_out,
+            item_count=item_count,
+            service_type=service_type,
+            price=price,
+            total_price=tp,
+            status="Pending"
+        )
+        
+        ql.append(new_order)
+        profile["order_history"].append(order_id)  
+        
+        print("Order saved successfully.")
+    else:
+        print("Order not saved.")
+    
+    input("Press Enter to continue...")
+
+def view_queue():
+    """View order queues"""
+    while True:
+        print("--- View Queue ---")
+        print("1. Pending Orders")
+        print("2. Completed Orders")
+        print("3. Exit")
+        
+        while True:
+            try:
+                qc = int(input("Enter your choice (1-3): "))
+                if 1 <= qc <= 3:
+                    break
+                print("Please enter a number between 1 and 3.")
+            except ValueError:
+                print("Please enter a valid number.")
+        
+        if qc == 1:
+            print("Pending Orders:")
+            if not ql:
+                print("No pending orders.")
+            else:
+                for i, order in enumerate(ql, 1):
+                    print(f"{i}. ID: {order.id}, Customer: {order.customer_name}, "
+                          f"Service: {order.service_type}, Date In: {order.date_in}")
+        
+        elif qc == 2:
+            print("Completed Orders:")
+            if not col:
+                print("No completed orders.")
+            else:
+                for i, order in enumerate(col, 1):
+                    print(f"{i}. ID: {order.id}, Customer: {order.customer_name}, "
+                          f"Service: {order.service_type}, Date Out: {order.date_out}")
+        
+        elif qc == 3:
+            return
+        
+        input("Press Enter to continue...")  
+        return_choice = input("Would you like to return to the menu? (yes/no): ").lower()
+        if return_choice == "yes":
+            return
+
+def process_fifo():
+    """Process orders in FIFO (First In, First Out) order based on date_in"""
+    print("--- Process Orders (FIFO) ---")
+    
+    if not ql:
+        print("No pending orders to process.")
+        input("Press Enter to continue...")
+        return
+    
+    try:
+        sq = sorted(ql, key=lambda x: datetime.datetime.strptime(x.date_in, "%Y-%m-%d"))
+        
+        print("Pending Orders (Sorted by Date In, Oldest First):")
+        for i, order in enumerate(sq, 1):
+            print(f"{i}. ID: {order.id}, Customer: {order.customer_name}, Date In: {order.date_in}")
+        
+        while True:
+            try:
+                order_num = int(input("Enter order number to process (0 to cancel): "))
+                if 0 <= order_num <= len(sq):
+                    break
+                print(f"Please enter a number between 0 and {len(sq)}.")
+            except ValueError:
+                print("Please enter a valid number.")
+        
+        if order_num == 0:
+            print("Order processing cancelled.")
+            input("Press Enter to continue...")
+            return
+        
+        so = sq[order_num - 1]
+        
+        print("\nOrder Details:")
+        print(f"Customer: {so.customer_name}")
+        print(f"Service Type: {so.service_type}")
+        print(f"Date In: {so.date_in}")
+        print(f"Date Out: {so.date_out}")
+        print(f"Total Price: P{so.total_price:.2f}")
+        
+        confirm = input("\nMark this order as completed? (yes/no): ").lower()
+        
+        if confirm == "yes":
+            so.status = "Completed"
+            ql.remove(so)
+            col.append(so)
+            
+            print(f"Order for {so.customer_name} has been processed and marked as completed.")
+        else:
+            print("Order processing cancelled.")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    input("Press Enter to continue...")
+
+def create_report_menu():
+    """Create reports menu"""
+    while True:
+        print("--- LaundroTrack Report Menu ---")
+        print("1. Generate Service Report")
+        print("2. Sort Completed Orders (FIFO)")
+        print("3. Return to Main Menu")
+        
+        while True:
+            try:
+                choice = int(input("Enter your choice (1-3): "))
+                if 1 <= choice <= 3:
+                    break
+                print("Please enter a number between 1 and 3.")
+            except ValueError:
+                print("Please enter a valid number.")
+        
+        if choice == 1:
+            search_id = input("Enter Customer Name to Generate Report: ")
+            found_order = None
+
+
+            for order in ql + col:
+                if order.customer_name.lower() == search_id.lower():  
+                    found_order = order
+                    break
+            
+            if not found_order:
+                print("Error: Customer Name not found.")
+            else:
+                print("=== ORDER REPORT ===")
+                print(f"Customer Name: {found_order.customer_name}")
+                print(f"Phone Number: {found_order.phone_number}")
+                print(f"Service Type: {found_order.service_type}")
+                print(f"Date In: {found_order.date_in}")
+                print(f"Date Out: {found_order.date_out}")
+                print(f"Items: {found_order.item_count}")
+                print(f"Price per Item: P{found_order.price:.2f}")
+                print(f"Total Price: P{found_order.total_price:.2f}")
+                print(f"Status: {found_order.status}")
+        
+        elif choice == 2:
+            print("--- Sorting Orders (FIFO by Date In) ---")
+            
+            if not col:
+                print("No completed orders to sort.")
+            else:
+                try:
+                    sorted_orders = sorted(col, 
+                                          key=lambda x: datetime.datetime.strptime(x.date_in, "%Y-%m-%d"))
+                    
+                    for i, order in enumerate(sorted_orders, 1):
+                        print(f"{i}. Customer: {order.customer_name}, "
+                              f"Date In: {order.date_in}, "
+                              f"Service: {order.service_type}")
+                except Exception as e:
+                    print(f"Error sorting orders: {e}")
+        
+        elif choice == 3:
+            print("Returning to Main Menu...")
+            return
+        
+        input("Press Enter to continue...") 
+
+def display_menu():
+    """Display the order menu"""
+    while True:
+        try:
+            print("\nWelcome to LaundroTrack - Order Menu")  
+            print("Please select an option:")
+            print("1. Add Order")
+            print("2. View Queue")
+            print("3. Create Report")
+            print("4. Return to Main Menu")
+            
+            while True:
+                try:
+                    choice = int(input("Enter your choice (1-4): "))
+                    if 1 <= choice <= 4:
+                        break
+                    print("Please enter a number between 1 and 4.")
+                except ValueError:
+                    print("Please enter a valid number.")
+            
+            if choice == 1:
+                addo()
+            elif choice == 2:
+                view_queue()
+            elif choice == 3:
+                create_report_menu()
+            elif choice == 4:
+                print("Returning to Main Menu...")
+                return
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            input("Press Enter to continue...")
+
+def main():
+    """Main function"""
+    try:
+        print("\n=== Welcome to LaundroTrack System ===")
+        
+        # Main loop
+        while True:
+            try:
+                print("\n=== MAIN MENU ===")
+                print("1. Display Order Menu")
+                print("2. Process Orders (FIFO)")
+                print("3. Exit System")
+                
+                while True:
+                    try:
+                        choice = int(input("Enter your choice (1-3): "))
+                        if 1 <= choice <= 3:
+                            break
+                        print("Please enter a number between 1 and 3.")
+                    except ValueError:
+                        print("Please enter a valid number.")
+                
+                if choice == 1:
+                    display_menu()
+                elif choice == 2:
+                    process_fifo()
+                elif choice == 3:
+                    confirm = input("Are you sure you want to exit? (yes/no): ").lower()
+                    if confirm == "yes":
+                        print("Thank you for using LaundroTrack. Goodbye!")
+                        break
+            except Exception as e:
+                print(f"\nAn error occurred: {e}")
+                input("Press Enter to continue...")
+    
+    except Exception as e:
+        print(f"\nA critical error occurred: {e}")
+        print("The system will now prompt you to exit safely.")
+        input("Press Enter to exit...")
+    
+    finally:
+        print("Exiting LaundroTrack System...")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        input("Press Enter to exit...")
+    finally:
+        sys.exit(0)
